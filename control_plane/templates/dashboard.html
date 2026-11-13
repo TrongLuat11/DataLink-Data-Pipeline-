@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+{% block title %}Bảng Điều Khiển Pipeline — DataLink{% endblock %}
+
+{% block content %}
+<!-- HEADER -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-5">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-bold mb-0 text-black" style="letter-spacing: -0.03em;">Bảng Điều Khiển Pipeline</h2>
+            <span class="status-badge badge-SUCCESS">Hệ thống sẵn sàng</span>
+        </div>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+            Điều phối tự động quy trình Ingestion (dlt) & Transformation (dbt) Medallion Architecture
+        </p>
+    </div>
+    {% if user.role in ['admin', 'operator'] %}
+    <div class="d-flex gap-2">
+        <a href="/dbt" class="btn-minimal-outline">
+            <i class="bi bi-diagram-3 me-1"></i>
+            <span>Trung Tâm dbt</span>
+        </a>
+        <button id="btnToggleScheduler" class="btn-minimal-outline" onclick="toggleScheduler()">
+            <i class="bi bi-clock-history me-1"></i>
+            <span id="lblToggleScheduler">{% if scheduler_active %}Tạm Dừng Lịch{% else %}Bật Lịch Hẹn{% endif %}</span>
+        </button>
+        <button id="btnRunPipeline" class="btn-minimal-black" onclick="triggerPipeline()">
+            <i class="bi bi-play-fill me-1" style="font-size: 1.1rem;"></i>
+            <span>Chạy Pipeline (Cập Nhật)</span>
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- METRIC CARDS -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="metric-header">Lập Lịch Tự Động</span>
+                <i class="bi bi-calendar-check text-muted"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span id="badgeSchedulerStatus" class="status-badge {% if scheduler_active %}badge-SUCCESS{% else %}badge-FAILED{% endif %}">
+                        {% if scheduler_active %}Đang kích hoạt{% else %}Đã tạm dừng{% endif %}
+                    </span>
+                </div>
+                <div class="text-muted small">
+                    Cú pháp Cron: <code class="font-mono bg-light text-dark px-2 py-1 rounded border">0 2 * * *</code>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 border-top text-muted" style="font-size: 0.78rem;">
+                Tự động chạy vào 02:00 sáng mỗi ngày
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="metric-header">Lần Chạy Kế Tiếp</span>
+                <i class="bi bi-clock-history text-muted"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold text-black font-mono mb-1" style="letter-spacing: -0.02em;">
+                    {{ next_run if next_run else 'Chưa lên lịch' }}
+                </h4>
+                <div class="text-muted small">Chế độ đồng bộ dữ liệu gia tăng (Incremental)</div>
+            </div>
+            <div class="mt-3 pt-3 border-top text-muted" style="font-size: 0.78rem;">
+                Kích hoạt tự động qua APScheduler Engine
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="metric-header">Báo Cáo Doanh Nghiệp</span>
+                <i class="bi bi-pie-chart text-muted"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold text-black mb-1" style="letter-spacing: -0.02em;">Apache Superset</h4>
+                <div class="text-muted small">Khám phá Gold Layer (`marts`) đa chiều</div>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <a href="http://localhost:8088" target="_blank" class="text-black fw-medium text-decoration-none" style="font-size: 0.82rem;">
+                    Mở Superset Studio (Port 8088) <i class="bi bi-arrow-up-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DBT QUICK ACTIONS & STATUS BAR -->
+<div class="minimal-card p-4 mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 44px; height: 44px; background: #09090b; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                <i class="bi bi-diagram-3-fill"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h6 class="fw-bold text-black mb-0 font-mono">dbt Transformation Engine</h6>
+                    <span class="status-badge badge-SUCCESS">{{ dbt.stats.pass_rate }}% PASS</span>
+                </div>
+                <div class="text-muted small mt-1">
+                    <span class="font-mono text-dark fw-semibold">{{ dbt.stats.total_models }}</span> models (5 Staging + 5 Marts) &bull;
+                    <span class="font-mono text-dark fw-semibold">{{ dbt.stats.total_tests }}</span> data tests &bull;
+                    Lần chạy: <span class="font-mono text-dark">{{ dbt.generated_at or 'Chưa chạy' }}</span> ({{ dbt.elapsed_time }}s)
+                </div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn-minimal-outline btn-sm font-mono" onclick="triggerDbtAction('run', null, false, this)">
+                <i class="bi bi-play-circle me-1"></i> dbt run
+            </button>
+            <button class="btn-minimal-outline btn-sm font-mono" onclick="triggerDbtAction('test', null, false, this)">
+                <i class="bi bi-check2-circle me-1"></i> dbt test
+            </button>
+            <button class="btn-minimal-outline btn-sm font-mono" onclick="triggerDbtAction('build', null, false, this)">
+                <i class="bi bi-layers me-1"></i> dbt build
+            </button>
+            <a href="/dbt" class="btn-minimal-black btn-sm font-mono text-decoration-none">
+                <span>Chi Tiết dbt</span> <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORY TABLE -->
+<div class="minimal-card overflow-hidden">
+    <!-- HISTORY HEADER -->
+    <div class="p-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <div>
+            <h6 class="fw-bold text-black mb-1">Lịch Sử Các Lần Thực Thi</h6>
+            <p class="text-muted mb-0 small">Toàn bộ các phiên Ingestion, dbt Transformation và Full E2E Pipeline</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span id="historyCountBadge" class="font-mono text-muted small bg-light px-2 py-1 rounded border">
+                Hiển thị {{ runs|length if runs else 0 }} phiên
+            </span>
+        </div>
+    </div>
+
+    <!-- TOOLBAR & BỘ LỌC (LOẠI CHẠY, NGÀY, TÌM KIẾM, SỐ DÒNG) -->
+    <div class="px-4 py-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <!-- Bộ lọc loại pipeline -->
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-dark active font-mono" id="btnFilterCatAll" onclick="setCategoryFilter('all')">
+                    Tất Cả
+                </button>
+                <button type="button" class="btn btn-outline-dark font-mono" id="btnFilterCatFull" onclick="setCategoryFilter('full')">
+                    <i class="bi bi-play-circle-fill me-1"></i> Chạy Hết (Full E2E)
+                </button>
+                <button type="button" class="btn btn-outline-dark font-mono" id="btnFilterCatDbt" onclick="setCategoryFilter('dbt')">
+                    <i class="bi bi-diagram-3 me-1"></i> Tác Vụ dbt
+                </button>
+            </div>
+        </div>
+
+        <!-- Bộ lọc ngày -->
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted font-mono" style="font-size: 0.78rem;">
+                <i class="bi bi-calendar3 me-1"></i> Ngày:
+            </span>
+            <input type="date" id="historyDateInput" class="form-control form-control-sm font-mono" style="width: 140px;" onchange="applyHistoryFilter()">
+            <button class="btn btn-sm btn-outline-secondary font-mono px-2 py-1" onclick="setTodayDate()" style="font-size: 0.75rem;" title="Lọc ngày hôm nay">
+                Hôm nay
+            </button>
+            <button class="btn btn-sm btn-outline-secondary font-mono px-2 py-1" onclick="clearDateFilter()" style="font-size: 0.75rem;" title="Xem tất cả các ngày">
+                Tất cả ngày
+            </button>
+        </div>
+
+        <!-- Ô tìm kiếm & Số lượng trên trang -->
+        <div class="d-flex align-items-center gap-2">
+            <input type="text" id="historySearchInput" class="form-control form-control-sm font-mono" style="width: 190px;" placeholder="Tìm kiếm phiên..." onkeyup="applyHistoryFilter()">
+            <select id="historyPageSize" class="form-select form-select-sm font-mono" style="width: 130px;" onchange="changeHistoryPageSize()">
+                <option value="10" selected>10 phiên / trang</option>
+                <option value="25">25 phiên / trang</option>
+                <option value="50">50 phiên / trang</option>
+                <option value="all">Tất cả (Cuộn con lăn)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- CON LĂN BẢNG (SCROLLABLE TABLE CONTAINER CÓ GHIM TIÊU ĐỀ) -->
+    <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+            <thead style="position: sticky; top: 0; z-index: 3; background: #fafafa; box-shadow: 0 1px 0 var(--border-light);">
+                <tr style="border-bottom: 1px solid var(--border-light);">
+                    <th class="py-3 px-4 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Mã Chạy</th>
+                    <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Tên Pipeline</th>
+                    <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Kích Hoạt Bởi</th>
+                    <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Bắt Đầu</th>
+                    <th class="py-3 px-3 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Thời Lượng</th>
+                    <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Trạng Thái</th>
+                    <th class="py-3 px-4 text-end text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafa;">Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                {% if runs %}
+                {% for run in runs %}
+                {% set is_full = ('full' in run.pipeline_name|lower or 'dlt + dbt' in run.pipeline_name|lower) %}
+                {% set is_dbt = ('dbt' in run.pipeline_name|lower and not is_full) %}
+                {% set cat = 'full' if is_full else ('dbt' if is_dbt else 'ingest') %}
+                <tr class="history-row" 
+                    data-category="{{ cat }}"
+                    data-date="{{ run.started_at.strftime('%Y-%m-%d') if run.started_at else '' }}"
+                    data-search="#{{ run.id }} {{ run.pipeline_name|lower }} {{ run.triggered_by|lower }} {{ run.status|lower }}"
+                    style="border-bottom: 1px solid var(--border-light);">
+                    <td class="py-3 px-4 font-mono fw-semibold text-black">
+                        #{{ "%02d" % run.id if run.id is number else run.id }}
+                    </td>
+                    <td class="py-3 px-3 fw-medium text-black">
+                        {% if is_full %}
+                        <span class="badge bg-dark text-white font-mono me-1" style="font-size: 0.65rem;">CHẠY HẾT</span>
+                        {% elif is_dbt %}
+                        <span class="badge bg-light text-dark border font-mono me-1" style="font-size: 0.65rem;">DBT</span>
+                        {% else %}
+                        <span class="badge bg-light text-secondary border font-mono me-1" style="font-size: 0.65rem;">INGEST</span>
+                        {% endif %}
+                        {{ run.pipeline_name }}
+                    </td>
+                    <td class="py-3 px-3">
+                        <span class="font-mono px-2 py-1 bg-light border rounded text-dark" style="font-size: 0.75rem;">
+                            {{ run.triggered_by }}
+                        </span>
+                    </td>
+                    <td class="py-3 px-3 text-muted font-mono" style="font-size: 0.8rem;">
+                        {{ run.started_at.strftime('%d/%m/%Y %H:%M:%S') if run.started_at else '---' }}
+                    </td>
+                    <td class="py-3 px-3 font-mono text-muted">
+                        {{ "%.1fs" % run.execution_time_seconds if run.execution_time_seconds else '---' }}
+                    </td>
+                    <td class="py-3 px-3">
+                        <span class="status-badge badge-{{ run.status }}">{{ run.status }}</span>
+                    </td>
+                    <td class="py-3 px-4 text-end">
+                        <textarea id="log-{{ run.id }}" class="d-none">{{ run.log_output or '' }}</textarea>
+                        <button class="btn-minimal-outline btn-sm px-3 py-1 font-mono" onclick="showLog({{ run.id }})" style="font-size: 0.75rem;">
+                            <i class="bi bi-terminal me-1"></i> Log
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr id="emptyHistoryRow">
+                    <td colspan="7" class="text-center py-5">
+                        <div class="text-muted">
+                            <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                            Chưa có phiên thực thi pipeline nào được ghi nhận.
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                <tr id="noResultsFilteredRow" style="display: none;">
+                    <td colspan="7" class="text-center py-5">
+                        <div class="text-muted">
+                            <i class="bi bi-funnel" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                            Không tìm thấy phiên thực thi nào khớp với bộ lọc đã chọn.
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PHÂN TRANG / PAGINATION FOOTER -->
+    <div class="p-3 border-top d-flex flex-column flex-md-row justify-content-between align-items-center gap-2" style="background: #fafafa;">
+        <div class="text-muted font-mono small" id="historyPaginationInfo">
+            Hiển thị 1 - 10 trên tổng số 16 phiên
+        </div>
+        <div class="d-flex align-items-center gap-1" id="historyPaginationControls">
+            <button class="btn btn-sm btn-outline-dark font-mono px-2 py-1" id="btnPagePrev" onclick="changePage(-1)">
+                &laquo; Trước
+            </button>
+            <span id="pageButtonsContainer" class="d-flex gap-1"></span>
+            <button class="btn btn-sm btn-outline-dark font-mono px-2 py-1" id="btnPageNext" onclick="changePage(1)">
+                Sau &raquo;
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- LOG VIEWER TERMINAL MODAL -->
+<div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background: #09090b; border-radius: 10px; overflow: hidden; border: 1px solid #27272a;">
+            <!-- TERMINAL HEADER -->
+            <div class="modal-header border-bottom border-dark py-3 px-4" style="background: #09090b;">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #27272a; display: inline-block;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #27272a; display: inline-block;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #27272a; display: inline-block;"></span>
+                    <span class="ms-2 text-white font-mono fw-semibold" id="logModalTitle" style="font-size: 0.85rem;">Log Thực Thi</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-dark border border-secondary text-light font-mono" onclick="copyLog()" style="font-size: 0.75rem;">
+                        <i class="bi bi-clipboard me-1"></i> Sao chép
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <!-- TERMINAL BODY -->
+            <div class="modal-body p-4" style="background: #000000; min-height: 380px;">
+                <pre id="logContent" class="font-mono text-light mb-0" style="font-size: 0.82rem; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: #e4e4e7;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showLog(runId) {
+    const logEl = document.getElementById('log-' + runId);
+    const logText = logEl ? logEl.value : '';
+    document.getElementById('logModalTitle').innerText = 'pipeline_run_' + runId + '.log';
+    document.getElementById('logContent').innerText = logText || 'Không có dữ liệu log ghi nhận.';
+    new bootstrap.Modal(document.getElementById('logModal')).show();
+}
+
+function copyLog() {
+    const content = document.getElementById('logContent').innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        alert('Đã sao chép log vào bộ nhớ tạm.');
+    });
+}
+
+function triggerPipeline() {
+    const btn = document.getElementById('btnRunPipeline');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Đang nạp/cập nhật...';
+  
+    fetch('/api/pipeline/run', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+        alert('Pipeline hoàn thành với trạng thái: ' + data.status + (data.duration ? ' (' + data.duration + 's)' : ''));
+        location.reload();
+    })
+    .catch(err => {
+        alert('Lỗi kích hoạt pipeline: ' + err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Chạy Pipeline (Cập Nhật)';
+    });
+}
+
+function toggleScheduler() {
+    const btn = document.getElementById('btnToggleScheduler');
+    btn.disabled = true;
+    fetch('/api/scheduler/toggle', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        location.reload();
+    })
+    .catch(err => {
+        alert('Lỗi đổi trạng thái lịch: ' + err);
+        btn.disabled = false;
+    });
+}
+
+function triggerDbtAction(action, select = null, fullRefresh = false, btn = null) {
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang chạy...';
+    }
+
+    const payload = { action: action };
+    if (select) payload.select = select;
+    if (fullRefresh) payload.full_refresh = true;
+
+    fetch('/api/dbt/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+
+        document.getElementById('logModalTitle').innerText = 'dbt_' + action + '.log';
+        document.getElementById('logContent').innerText = data.logs || 'Không có dữ liệu log ghi nhận.';
+        new bootstrap.Modal(document.getElementById('logModal')).show();
+
+        if (data.status === 'SUCCESS') {
+            setTimeout(() => { location.reload(); }, 2500);
+        } else {
+            alert('Tác vụ dbt thất bại: ' + (data.message || 'Xem chi tiết log trong Terminal.'));
+        }
+    })
+    .catch(err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        alert('Lỗi kích hoạt dbt: ' + err);
+    });
+}
+
+// ════════ QUẢN LÝ BỘ LỌC & PHÂN TRANG LỊCH SỬ ════════
+let currentCatFilter = 'all';
+let currentHistoryPage = 1;
+let historyPageSize = 10;
+
+function setCategoryFilter(cat) {
+    currentCatFilter = cat;
+    ['btnFilterCatAll', 'btnFilterCatFull', 'btnFilterCatDbt'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    });
+    if (cat === 'all') document.getElementById('btnFilterCatAll').classList.add('active');
+    if (cat === 'full') document.getElementById('btnFilterCatFull').classList.add('active');
+    if (cat === 'dbt') document.getElementById('btnFilterCatDbt').classList.add('active');
+
+    currentHistoryPage = 1;
+    applyHistoryFilter();
+}
+
+function setTodayDate() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('historyDateInput').value = today;
+    currentHistoryPage = 1;
+    applyHistoryFilter();
+}
+
+function clearDateFilter() {
+    document.getElementById('historyDateInput').value = '';
+    currentHistoryPage = 1;
+    applyHistoryFilter();
+}
+
+function changeHistoryPageSize() {
+    const val = document.getElementById('historyPageSize').value;
+    historyPageSize = (val === 'all') ? 'all' : parseInt(val, 10);
+    currentHistoryPage = 1;
+    applyHistoryFilter();
+}
+
+function changePage(delta) {
+    currentHistoryPage += delta;
+    applyHistoryFilter();
+}
+
+function goToHistoryPage(page) {
+    currentHistoryPage = page;
+    applyHistoryFilter();
+}
+
+function applyHistoryFilter() {
+    const dateVal = document.getElementById('historyDateInput').value.trim();
+    const searchVal = (document.getElementById('historySearchInput').value || '').toLowerCase().trim();
+    const rows = Array.from(document.querySelectorAll('.history-row'));
+
+    // Lọc theo các tiêu chí: Loại chạy, Ngày, Từ khóa
+    const matchedRows = rows.filter(row => {
+        const cat = row.getAttribute('data-category');
+        const rowDate = row.getAttribute('data-date');
+        const searchTxt = (row.getAttribute('data-search') || '').toLowerCase();
+
+        // 1. Lọc loại pipeline
+        if (currentCatFilter !== 'all' && cat !== currentCatFilter) {
+            return false;
+        }
+
+        // 2. Lọc ngày
+        if (dateVal && rowDate !== dateVal) {
+            return false;
+        }
+
+        // 3. Tìm kiếm từ khóa
+        if (searchVal && !searchTxt.includes(searchVal)) {
+            return false;
+        }
+
+        return true;
+    });
+
+    const totalMatched = matchedRows.length;
+    const badge = document.getElementById('historyCountBadge');
+    if (badge) {
+        badge.innerText = 'Hiển thị ' + totalMatched + ' phiên';
+    }
+
+    const noResultsRow = document.getElementById('noResultsFilteredRow');
+    if (noResultsRow) {
+        noResultsRow.style.display = (totalMatched === 0 && rows.length > 0) ? '' : 'none';
+    }
+
+    // Ẩn tất cả các dòng trước khi phân trang
+    rows.forEach(r => r.style.display = 'none');
+
+    // Chế độ xem toàn bộ (Cuộn con lăn)
+    if (historyPageSize === 'all') {
+        matchedRows.forEach(r => r.style.display = '');
+        document.getElementById('historyPaginationInfo').innerText = 'Hiển thị tất cả ' + totalMatched + ' phiên (Cuộn con lăn)';
+        document.getElementById('historyPaginationControls').style.display = 'none';
+        return;
+    }
+
+    // Chế độ phân trang
+    document.getElementById('historyPaginationControls').style.display = 'flex';
+    const totalPages = Math.ceil(totalMatched / historyPageSize) || 1;
+    if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
+    if (currentHistoryPage < 1) currentHistoryPage = 1;
+
+    const startIdx = (currentHistoryPage - 1) * historyPageSize;
+    const endIdx = Math.min(startIdx + historyPageSize, totalMatched);
+
+    for (let i = startIdx; i < endIdx; i++) {
+        matchedRows[i].style.display = '';
+    }
+
+    // Cập nhật thông tin phân trang
+    const infoText = totalMatched === 0 
+        ? 'Không có phiên nào khớp bộ lọc' 
+        : 'Hiển thị ' + (startIdx + 1) + ' - ' + endIdx + ' trên tổng số ' + totalMatched + ' phiên';
+    document.getElementById('historyPaginationInfo').innerText = infoText;
+
+    // Nút trước / sau
+    document.getElementById('btnPagePrev').disabled = (currentHistoryPage <= 1);
+    document.getElementById('btnPageNext').disabled = (currentHistoryPage >= totalPages);
+
+    // Render các nút số trang
+    const container = document.getElementById('pageButtonsContainer');
+    container.innerHTML = '';
+    
+    let minP = Math.max(1, currentHistoryPage - 2);
+    let maxP = Math.min(totalPages, minP + 4);
+    if (maxP - minP < 4) minP = Math.max(1, maxP - 4);
+
+    for (let p = minP; p <= maxP; p++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm font-mono px-2 py-1 ' + (p === currentHistoryPage ? 'btn-dark' : 'btn-outline-dark');
+        btn.innerText = p;
+        btn.onclick = () => goToHistoryPage(p);
+        container.appendChild(btn);
+    }
+}
+
+// Khởi chạy bộ lọc ngay khi load trang
+document.addEventListener('DOMContentLoaded', () => {
+    applyHistoryFilter();
+});
+</script>
+{% endblock %}

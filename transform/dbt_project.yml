@@ -1,0 +1,22 @@
+name: 'datalink_transform'
+version: '1.0.0'
+config-version: 2
+profile: 'datalink_transform'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  datalink_transform:
+    staging:
+      +materialized: view
+      +schema: staging_data
+    marts:
+      +materialized: table
+      +schema: mart_data
+      

@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Báo Cáo Phân Tích Nghiệp Vụ — DataLink{% endblock %}
+
+{% block content %}
+<!-- HEADER -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-bold mb-0 text-black" style="letter-spacing: -0.03em;">Báo Cáo Phân Tích Nghiệp Vụ</h2>
+            <span class="status-badge badge-SUCCESS">Tiki BI Studio &bull; Port 8088</span>
+        </div>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+            Bộ 5 Dashboard phân tích sàn thương mại điện tử Tiki kết nối PostgreSQL Data Warehouse qua Apache Superset
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ superset_url }}" target="_blank" class="btn-minimal-black text-decoration-none">
+            <i class="bi bi-box-arrow-up-right me-2"></i> Mở Superset Studio (Port 8088)
+        </a>
+    </div>
+</div>
+
+<!-- 4 BUSINESS KPI CARDS -->
+<div class="row g-3 mb-4">
+    <!-- REVENUE KPI -->
+    <div class="col-md-6 col-xl-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Tổng Doanh Thu Sàn</span>
+                <i class="bi bi-cash-stack text-muted"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold text-black font-mono mb-1" style="letter-spacing: -0.02em;">
+                    {{ "{:,.0f}".format(kpi.total_revenue) }} đ
+                </h4>
+                <div class="text-muted small">
+                    Đã xuất kho: <span class="fw-semibold text-dark font-mono">{{ "{:,}".format(kpi.total_sold) }}</span> sản phẩm
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Nguồn: <code class="font-mono text-dark">mart_data.fact_sales</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRODUCTS & SELLERS KPI -->
+    <div class="col-md-6 col-xl-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Quy Mô Danh Mục & Shop</span>
+                <i class="bi bi-shop text-muted"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                    <h4 class="fw-bold text-black font-mono mb-0">{{ kpi.total_products }}</h4>
+                    <span class="text-muted small">sản phẩm</span>
+                </div>
+                <div class="text-muted small">
+                    Phủ khắp <span class="fw-semibold text-dark font-mono">{{ kpi.total_brands }}</span> thương hiệu &bull; <span class="fw-semibold text-dark font-mono">{{ kpi.total_sellers }}</span> shop
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Nguồn: <code class="font-mono text-dark">mart_data.dim_products</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLASH SALES KPI -->
+    <div class="col-md-6 col-xl-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Hiệu Quả Flash Sale</span>
+                <i class="bi bi-lightning-charge text-muted"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold text-black font-mono mb-1" style="letter-spacing: -0.02em;">
+                    {{ "{:,.0f}".format(kpi.flash_revenue) }} đ
+                </h4>
+                <div class="text-muted small">
+                    <span class="fw-semibold text-dark font-mono">{{ kpi.total_deals }}</span> deal giờ vàng &bull; Cháy hàng: <span class="fw-bold text-success font-mono">{{ kpi.avg_sell_out }}%</span>
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Nguồn: <code class="font-mono text-dark">mart_data.fact_flash_sales</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- REVIEWS & CSAT KPI -->
+    <div class="col-md-6 col-xl-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Hài Lòng Khách Hàng</span>
+                <i class="bi bi-star-fill text-warning"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                    <h4 class="fw-bold text-black font-mono mb-0">{{ kpi.avg_rating }} / 5.0</h4>
+                    <span class="status-badge badge-SUCCESS" style="font-size: 0.65rem;">{{ kpi.positive_pct }}% Tích Cực</span>
+                </div>
+                <div class="text-muted small">
+                    Tổng cộng <span class="fw-semibold text-dark font-mono">{{ kpi.total_reviews }}</span> phản hồi & đánh giá
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Nguồn: <code class="font-mono text-dark">mart_data.fact_reviews</code>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DASHBOARD SELECTION TABS -->
+<div class="minimal-card p-3 mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+        <div>
+            <div class="text-muted font-mono small text-uppercase fw-semibold" style="letter-spacing: 0.05em; font-size: 0.72rem;">
+                Chọn Báo Cáo Trực Quan Superset:
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2" id="dashboardTabs">
+                {% for d in dashboards %}
+                <button type="button" 
+                        class="btn btn-sm {% if loop.first %}btn-dark active{% else %}btn-outline-dark{% endif %} font-mono px-3 py-2"
+                        id="tab-btn-{{ d.id }}"
+                        onclick="switchDashboard({{ d.id }}, '{{ d.title }}', '{{ d.desc }}', '{{ d.dataset }}', '{{ d.url }}')">
+                    <i class="bi {{ d.icon }} me-1"></i>
+                    <span>{{ d.code }}: {{ d.title }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn-minimal-outline btn-sm font-mono" onclick="reloadIframe()" title="Tải lại Dashboard">
+                <i class="bi bi-arrow-clockwise me-1"></i> Tải lại
+            </button>
+            <a id="btnOpenSupersetDirect" href="http://localhost:8088/superset/dashboard/5/" target="_blank" class="btn-minimal-outline btn-sm font-mono" title="Mở riêng trong tab mới">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Tab mới
+            </a>
+            <button class="btn-minimal-outline btn-sm font-mono" onclick="toggleFullscreen()" title="Xem toàn màn hình">
+                <i class="bi bi-arrows-fullscreen me-1"></i> Toàn màn hình
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- LIVE EMBEDDED SUPERSET IFRAME CONTAINER -->
+<div class="minimal-card overflow-hidden mb-4" id="iframeWrapper">
+    <!-- IFRAME BAR -->
+    <div class="p-3 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 bg-light">
+        <div class="d-flex align-items-center gap-2">
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+            <span class="fw-bold font-mono text-black" id="activeDashboardTitle" style="font-size: 0.88rem;">
+                DASHBOARD 01: TỔNG QUAN ĐIỀU HÀNH
+            </span>
+            <span class="badge bg-white text-muted border font-mono small" id="activeDashboardDataset">
+                Dataset: mart_data.fact_sales, dim_products
+            </span>
+        </div>
+        <div class="text-muted small font-mono" id="activeDashboardDesc" style="font-size: 0.78rem;">
+            Báo cáo doanh số bán lẻ, số lượng xuất kho, tăng trưởng doanh thu và cơ cấu phân khúc giá sàn Tiki.
+        </div>
+    </div>
+
+    <!-- IFRAME -->
+    <div style="position: relative; width: 100%; height: 840px; background: #ffffff;">
+        <iframe id="supersetIframe" 
+                src="http://localhost:8088/superset/dashboard/5/?standalone=true" 
+                style="width: 100%; height: 100%; border: none;"
+                allow="fullscreen">
+        </iframe>
+    </div>
+
+    <!-- HELPER FOOTER -->
+    <div class="p-3 border-top bg-light d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 text-muted" style="font-size: 0.78rem;">
+        <div>
+            <i class="bi bi-info-circle me-1"></i>
+            Nếu Superset hiển thị trang đăng nhập trong khung trên, bạn hãy đăng nhập bằng tài khoản Quản trị:
+            <code class="font-mono text-dark bg-white px-2 py-1 rounded border ms-1">admin / admin123</code>
+        </div>
+        <div>
+            Khung nhúng trực tiếp từ Superset Standalone Engine (Port 8088)
+        </div>
+    </div>
+</div>
+
+<!-- 5 DETAILED DASHBOARDS SPECIFICATION CARDS -->
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold text-black mb-0">Cấu Trúc 5 Dashboard Nghiệp Vụ Sàn Tiki (Data Marts Layer)</h6>
+        <span class="badge bg-light text-dark border font-mono small">PostgreSQL mart_data</span>
+    </div>
+
+    <div class="row g-3">
+        {% for d in dashboards %}
+        <div class="col-md-6 col-xl-4">
+            <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="metric-header font-mono">{{ d.code }}</span>
+                        <i class="bi {{ d.icon }} text-muted" style="font-size: 1.1rem;"></i>
+                    </div>
+                    <h6 class="fw-bold text-black mb-2">{{ d.title }}</h6>
+                    <p class="text-muted small mb-3" style="line-height: 1.5;">{{ d.desc }}</p>
+                </div>
+                <div class="pt-3 border-top d-flex justify-content-between align-items-center">
+                    <span class="font-mono text-muted" style="font-size: 0.72rem;">Dataset: <code>{{ d.dataset }}</code></span>
+                    <button class="btn-minimal-outline btn-sm px-2 py-1 font-mono" onclick="switchDashboard({{ d.id }}, '{{ d.title }}', '{{ d.desc }}', '{{ d.dataset }}', '{{ d.url }}')" style="font-size: 0.72rem;">
+                        <i class="bi bi-eye me-1"></i> Xem
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+let currentDashboardId = 5;
+
+function switchDashboard(id, title, desc, dataset, url) {
+    currentDashboardId = id;
+
+    // Update active tab buttons
+    document.querySelectorAll('#dashboardTabs button').forEach(btn => {
+        btn.classList.remove('btn-dark', 'active');
+        btn.classList.add('btn-outline-dark');
+    });
+    const activeBtn = document.getElementById('tab-btn-' + id);
+    if (activeBtn) {
+        activeBtn.classList.remove('btn-outline-dark');
+        activeBtn.classList.add('btn-dark', 'active');
+    }
+
+    // Update header info
+    document.getElementById('activeDashboardTitle').innerText = 'DASHBOARD 0' + (id - 4) + ': ' + title;
+    document.getElementById('activeDashboardDataset').innerText = 'Dataset: ' + dataset;
+    document.getElementById('activeDashboardDesc').innerText = desc;
+
+    // Update open direct link
+    document.getElementById('btnOpenSupersetDirect').href = 'http://localhost:8088/superset/dashboard/' + id + '/';
+
+    // Update iframe src
+    const iframe = document.getElementById('supersetIframe');
+    iframe.src = url;
+
+    // Scroll to iframe
+    document.getElementById('iframeWrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function reloadIframe() {
+    const iframe = document.getElementById('supersetIframe');
+    iframe.src = iframe.src;
+}
+
+function toggleFullscreen() {
+    const elem = document.getElementById('iframeWrapper');
+    if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => {
+            alert('Không thể mở toàn màn hình: ' + err.message);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+</script>
+{% endblock %}

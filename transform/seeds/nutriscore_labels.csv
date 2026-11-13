@@ -1,0 +1,6 @@
+grade,label,color_hex,description
+a,Very Good,#1E8F4E,Excellent nutritional quality
+b,Good,#60AC0E,Good nutritional quality
+c,Average,#EEAE0E,Average nutritional quality
+d,Poor,#FF6F1E,Poor nutritional quality
+e,Bad,#E63E11,Very poor nutritional quality

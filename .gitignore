@@ -16,6 +16,12 @@ __pycache__/
 # dlt specific
 .dlt/
 
+# dbt specific
+target/
+dbt_packages/
+logs/
+.user.yml
+
 # DB
 *.sqlite3
 

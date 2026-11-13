@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: dim_products
+    description: "Bảng chiều sản phẩm chuẩn hóa phân khúc giá, tỷ lệ giảm giá"
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        tests:
+          - not_null
+
+  - name: dim_sellers
+    description: "Bảng chiều nhà bán hàng phân loại Mall vs Shop thường"
+    columns:
+      - name: seller_id
+        tests:
+          - unique
+          - not_null
+
+  - name: fact_sales
+    description: "Bảng sự thật bán hàng: doanh thu ước tính, lượng bán"
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+      - name: estimated_revenue
+        tests:
+          - not_null
+
+  - name: fact_reviews
+    description: "Bảng sự thật đánh giá và cảm xúc khách hàng"
+    columns:
+      - name: review_id
+        tests:
+          - unique
+          - not_null
+      - name: rating
+        tests:
+          - not_null
+
+  - name: fact_flash_sales
+    description: "Bảng sự thật phân tích hiệu suất sự kiện Flash Sale & Deal Sốc"
+    columns:
+      - name: deal_id
+        tests:
+          - unique
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: deal_estimated_revenue
+        tests:
+          - not_null

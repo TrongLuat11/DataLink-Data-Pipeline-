@@ -1,41 +1,81 @@
-version: '3.8'
+networks:
+  datalink_internal:
+    driver: bridge
+  datalink_frontend:
+    driver: bridge
 
 services:
   # ═══════ DATABASE ═══════
   postgres:
     image: postgres:15
     container_name: datalink_postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql  # Script khởi tạo
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - datalink_internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
-  # ═══════ BI DASHBOARD ═══════
-  metabase:
-    image: metabase/metabase:latest
-    container_name: datalink_metabase
+  # ═══════ BI DASHBOARD: APACHE SUPERSET ═══════
+  superset:
+    image: apache/superset:latest
+    container_name: datalink_superset
+    restart: unless-stopped
+    user: root
     environment:
-      MB_DB_TYPE: postgres
-      MB_DB_DBNAME: metabase_appdb
-      MB_DB_PORT: 5432
-      MB_DB_USER: ${POSTGRES_USER}
-      MB_DB_PASS: ${POSTGRES_PASSWORD}
-      MB_DB_HOST: postgres
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${SUPERSET_DB_NAME:-superset_meta}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cat << "EOF" > /app/pythonpath/superset_config.py
+        import os
+        SECRET_KEY = os.getenv("SUPERSET_SECRET_KEY")
+        SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
+        FEATURE_FLAGS = {"EMBEDDED_SUPERSET": True, "DASHBOARD_RBAC": True}
+        WTF_CSRF_ENABLED = False
+        TALISMAN_ENABLED = False
+        ENABLE_PROXY_FIX = True
+        # Vô hiệu hóa Async Query (không có Celery Worker & Redis trong project này)
+        # Nếu bật sẽ khiến SQL Lab bị stuck ở trạng thái "pending" mãi mãi
+        SQL_MAX_ROW = 10000
+        SUPERSET_WEBSERVER_TIMEOUT = 60
+        EOF
+        /usr/local/bin/pip install --no-cache-dir --target=/app/.venv/lib/python3.10/site-packages psycopg2-binary >/dev/null 2>&1
+        exec /app/docker/entrypoints/run-server.sh
     ports:
-      - "3000:3000"
+      - "127.0.0.1:8088:8088"
+    networks:
+      - datalink_internal
+      - datalink_frontend
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 3G
 
 volumes:
   postgres_data:
+
+  

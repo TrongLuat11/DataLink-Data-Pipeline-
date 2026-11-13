@@ -1,0 +1,13 @@
+datalink_transform:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      user: datalink
+      password: datalink_secret_2024
+      dbname: datalink_warehouse
+      schema: public
+      threads: 4
+      

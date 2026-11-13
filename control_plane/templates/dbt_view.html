@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+{% block title %}Trung Tâm Điều Hành & Kết Quả dbt — DataLink{% endblock %}
+
+{% block content %}
+<!-- HEADER -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-bold mb-0 text-black" style="letter-spacing: -0.03em;">Trung Tâm Điều Hành dbt</h2>
+            <span class="status-badge {% if dbt.stats.failed_models == 0 and dbt.stats.failed_tests == 0 %}badge-SUCCESS{% else %}badge-FAILED{% endif %}">
+                {% if dbt.stats.failed_models == 0 and dbt.stats.failed_tests == 0 %}Toàn bộ đạt chuẩn ({{ dbt.stats.pass_rate }}%){% else %}Có lỗi cần xử lý{% endif %}
+            </span>
+        </div>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+            Theo dõi chi tiết kết quả mô hình hóa dữ liệu (Models), kiểm thử chất lượng (Tests) và điều khiển các tác vụ dbt độc lập
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/dbt/docs" target="_blank" class="btn-minimal-outline">
+            <i class="bi bi-diagram-2 me-1"></i>
+            <span>Đồ Thị Phụ Thuộc (Lineage)</span>
+        </a>
+        <button class="btn-minimal-outline" onclick="location.reload()" title="Tải lại số liệu">
+            <i class="bi bi-arrow-clockwise me-1"></i>
+            <span>Làm Mới</span>
+        </button>
+    </div>
+</div>
+
+<!-- METRIC CARDS -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Lần Chạy Gần Nhất</span>
+                <i class="bi bi-clock-history text-muted"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold text-black font-mono mb-1" style="letter-spacing: -0.02em; font-size: 1.25rem;">
+                    {{ dbt.generated_at if dbt.generated_at else 'Chưa có dữ liệu' }}
+                </h4>
+                <div class="text-muted small">
+                    Thời lượng thực thi: <span class="font-mono fw-semibold text-dark">{{ dbt.elapsed_time }}s</span>
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Ghi nhận qua dbt Artifacts Engine
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Mô Hình Dữ Liệu (Models)</span>
+                <i class="bi bi-layers text-muted"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                    <h3 class="fw-bold text-black font-mono mb-0">{{ dbt.stats.total_models }}</h3>
+                    <span class="text-muted small">models</span>
+                </div>
+                <div class="text-muted small">
+                    Thành công: <span class="fw-semibold text-dark font-mono">{{ dbt.stats.passed_models }}/{{ dbt.stats.total_models }}</span>
+                    {% if dbt.stats.failed_models > 0 %}
+                    <span class="text-danger fw-semibold">({{ dbt.stats.failed_models }} lỗi)</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Bao gồm 5 Staging Views & 5 Marts Tables
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Kiểm Thử Chất Lượng (Tests)</span>
+                <i class="bi bi-shield-check text-muted"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                    <h3 class="fw-bold text-black font-mono mb-0">{{ dbt.stats.total_tests }}</h3>
+                    <span class="text-muted small">data tests</span>
+                </div>
+                <div class="text-muted small">
+                    Đạt chuẩn: <span class="fw-semibold text-dark font-mono">{{ dbt.stats.passed_tests }}/{{ dbt.stats.total_tests }}</span>
+                    {% if dbt.stats.failed_tests > 0 %}
+                    <span class="text-danger fw-semibold">({{ dbt.stats.failed_tests }} thất bại)</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Not Null, Unique, Range & Business Rules
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="minimal-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="metric-header">Độ Tin Cậy Dữ Liệu</span>
+                <i class="bi bi-patch-check text-muted"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                    <h3 class="fw-bold text-black font-mono mb-0">{{ dbt.stats.pass_rate }}%</h3>
+                    <span class="status-badge badge-SUCCESS" style="font-size: 0.65rem;">100% Hoàn Hảo</span>
+                </div>
+                <div class="text-muted small">
+                    Tổng tài nguyên: <span class="font-mono text-dark fw-semibold">{{ dbt.stats.total_items }}</span> đối tượng dbt
+                </div>
+            </div>
+            <div class="mt-3 pt-2 border-top text-muted" style="font-size: 0.76rem;">
+                Khớp chuẩn Medallion Architecture
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DBT ACTIONS PANEL -->
+<div class="minimal-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+            <h6 class="fw-bold text-black mb-1">Bảng Điều Khiển Tác Vụ dbt Chuyên Biệt</h6>
+            <p class="text-muted mb-0 small">Kích hoạt nhanh các tác vụ biên dịch, kiểm thử và đồng bộ hóa riêng rẽ</p>
+        </div>
+        <span class="badge bg-light text-dark border font-mono small">
+            CLI: dbt-core v1.12.5
+        </span>
+    </div>
+
+    <div class="row g-3">
+        <!-- dbt run -->
+        <div class="col-md-4 col-lg-2">
+            <button class="btn-dbt-action w-100 p-3 text-start d-flex flex-column justify-content-between h-100" onclick="triggerDbtAction('run', null, false, this)">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-play-circle-fill text-black" style="font-size: 1.25rem;"></i>
+                        <span class="fw-bold font-mono text-black" style="font-size: 0.9rem;">dbt run</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.76rem; line-height: 1.4;">
+                        Biên dịch SQL và tạo tất cả Views & Tables
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-top text-black fw-medium font-mono" style="font-size: 0.72rem;">
+                    Chạy Toàn Bộ Models &rarr;
+                </div>
+            </button>
+        </div>
+
+        <!-- dbt test -->
+        <div class="col-md-4 col-lg-2">
+            <button class="btn-dbt-action w-100 p-3 text-start d-flex flex-column justify-content-between h-100" onclick="triggerDbtAction('test', null, false, this)">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-check2-circle text-black" style="font-size: 1.25rem;"></i>
+                        <span class="fw-bold font-mono text-black" style="font-size: 0.9rem;">dbt test</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.76rem; line-height: 1.4;">
+                        Chạy 41+ kiểm thử tính toàn vẹn & chất lượng
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-top text-black fw-medium font-mono" style="font-size: 0.72rem;">
+                    Kiểm Tra Chất Lượng &rarr;
+                </div>
+            </button>
+        </div>
+
+        <!-- dbt build -->
+        <div class="col-md-4 col-lg-2">
+            <button class="btn-dbt-action w-100 p-3 text-start d-flex flex-column justify-content-between h-100" onclick="triggerDbtAction('build', null, false, this)">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-layers-fill text-black" style="font-size: 1.25rem;"></i>
+                        <span class="fw-bold font-mono text-black" style="font-size: 0.9rem;">dbt build</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.76rem; line-height: 1.4;">
+                        Chạy song hành Models + Tests theo quan hệ DAG
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-top text-black fw-medium font-mono" style="font-size: 0.72rem;">
+                    Chạy Toàn Chu Trình &rarr;
+                </div>
+            </button>
+        </div>
+
+        <!-- dbt run --select staging -->
+        <div class="col-md-4 col-lg-2">
+            <button class="btn-dbt-action w-100 p-3 text-start d-flex flex-column justify-content-between h-100" onclick="triggerDbtAction('staging', null, false, this)">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-funnel text-black" style="font-size: 1.25rem;"></i>
+                        <span class="fw-bold font-mono text-black" style="font-size: 0.9rem;">Chỉ Staging</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.76rem; line-height: 1.4;">
+                        Chỉ làm sạch & chuẩn hóa dữ liệu tầng Bronze &rarr; Silver
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-top text-black fw-medium font-mono" style="font-size: 0.72rem;">
+                    --select staging &rarr;
+                </div>
+            </button>
+        </div>
+
+        <!-- dbt run --select marts -->
+        <div class="col-md-4 col-lg-2">
+            <button class="btn-dbt-action w-100 p-3 text-start d-flex flex-column justify-content-between h-100" onclick="triggerDbtAction('marts', null, false, this)">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-gem text-black" style="font-size: 1.25rem;"></i>
+                        <span class="fw-bold font-mono text-black" style="font-size: 0.9rem;">Chỉ Marts</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.76rem; line-height: 1.4;">
+                        Tạo lại các bảng Fact & Dimension tầng Gold
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-top text-black fw-medium font-mono" style="font-size: 0.72rem;">
+                    --select marts &rarr;
+                </div>
+            </button>
+        </div>
+
+        <!-- dbt docs generate -->
+        <div class="col-md-4 col-lg-2">
+            <button class="btn-dbt-action w-100 p-3 text-start d-flex flex-column justify-content-between h-100" onclick="triggerDbtAction('docs', null, false, this)">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-book text-black" style="font-size: 1.25rem;"></i>
+                        <span class="fw-bold font-mono text-black" style="font-size: 0.9rem;">dbt docs</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size: 0.76rem; line-height: 1.4;">
+                        Biên dịch tài liệu Catalog và phác họa đồ thị Lineage
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-top text-black fw-medium font-mono" style="font-size: 0.72rem;">
+                    docs generate &rarr;
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- DETAILED RESULTS EXPLORER -->
+<div class="minimal-card overflow-hidden">
+    <!-- TOOLBAR & FILTERS -->
+    <div class="p-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-dark active font-mono px-3 py-2" id="tabAll" onclick="switchFilter('all')">
+                    Tất Cả ({{ dbt.stats.total_items }})
+                </button>
+                <button type="button" class="btn btn-outline-dark font-mono px-3 py-2" id="tabModels" onclick="switchFilter('model')">
+                    Mô Hình ({{ dbt.stats.total_models }})
+                </button>
+                <button type="button" class="btn btn-outline-dark font-mono px-3 py-2" id="tabTests" onclick="switchFilter('test')">
+                    Kiểm Thử ({{ dbt.stats.total_tests }})
+                </button>
+                {% if dbt.stats.total_seeds > 0 %}
+                <button type="button" class="btn btn-outline-dark font-mono px-3 py-2" id="tabSeeds" onclick="switchFilter('seed')">
+                    Seeds ({{ dbt.stats.total_seeds }})
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-outline-dark font-mono px-3 py-2" id="tabFailures" onclick="switchFilter('fail')">
+                    Lỗi Thất Bại ({{ dbt.stats.failed_models + dbt.stats.failed_tests }})
+                </button>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 w-100 w-md-auto" style="max-width: 320px;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchInput" class="form-control border-start-0 ps-0 font-mono" placeholder="Lọc theo tên hoặc bảng..." onkeyup="filterTable()">
+            </div>
+        </div>
+    </div>
+
+    <!-- MODELS TABLE SECTION -->
+    <div id="modelsSection" class="result-section">
+        <div class="px-4 py-2 bg-light border-bottom d-flex justify-content-between align-items-center">
+            <span class="text-uppercase fw-semibold font-mono text-muted" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                Danh Sách Mô Hình Dữ Liệu (dbt Models — {{ dbt.models|length }})
+            </span>
+            <span class="text-muted small font-mono">Tầng Staging (View) & Marts (Table)</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                <thead>
+                    <tr style="background: #fafafa; border-bottom: 1px solid var(--border-light);">
+                        <th class="py-3 px-4 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase;">Tên Mô Hình</th>
+                        <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Phân Tầng</th>
+                        <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Kiểu Lưu Trữ</th>
+                        <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Mô Tả Nghiệp Vụ</th>
+                        <th class="py-3 px-3 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase;">Thời Lượng</th>
+                        <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Trạng Thái</th>
+                        <th class="py-3 px-4 text-end text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="modelsTableBody">
+                    {% for m in dbt.models %}
+                    <tr class="item-row row-model row-{{ m.status }}" data-name="{{ m.name }}" data-layer="{{ m.layer }}">
+                        <td class="py-3 px-4 font-mono fw-semibold text-black">
+                            {{ m.name }}
+                            {% if m.relation %}
+                            <div class="text-muted font-mono" style="font-size: 0.7rem; font-weight: 400;">
+                                {{ m.relation }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="badge {% if m.layer == 'marts' %}bg-dark text-white{% else %}bg-light text-dark border{% endif %} font-mono" style="font-size: 0.7rem;">
+                                {{ m.layer|upper }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 font-mono text-muted" style="font-size: 0.78rem;">
+                            {{ m.materialization|upper }}
+                        </td>
+                        <td class="py-3 px-3 text-dark" style="font-size: 0.82rem; max-width: 300px;">
+                            {{ m.description }}
+                        </td>
+                        <td class="py-3 px-3 font-mono text-muted" style="font-size: 0.8rem;">
+                            {{ "%.2fs" % m.execution_time }}
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="status-badge {% if m.status in ['success', 'pass'] %}badge-SUCCESS{% else %}badge-FAILED{% endif %}">
+                                {{ m.status|upper }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-end">
+                            <button class="btn-minimal-outline btn-sm px-2 py-1 font-mono" onclick="triggerDbtAction('run', '{{ m.name }}', false, this)" style="font-size: 0.74rem;" title="Chạy riêng mô hình này">
+                                <i class="bi bi-play me-1"></i> Chạy Model
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TESTS TABLE SECTION -->
+    <div id="testsSection" class="result-section">
+        <div class="px-4 py-2 bg-light border-bottom border-top d-flex justify-content-between align-items-center">
+            <span class="text-uppercase fw-semibold font-mono text-muted" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                Danh Sách Kiểm Thử Chất Lượng (Data Tests — {{ dbt.tests|length }})
+            </span>
+            <span class="text-muted small font-mono">Not Null, Unique, Accepted Values, Assertions</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                <thead>
+                    <tr style="background: #fafafa; border-bottom: 1px solid var(--border-light);">
+                        <th class="py-3 px-4 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase;">Tên Kiểm Thử (Test)</th>
+                        <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Phân Loại</th>
+                        <th class="py-3 px-3 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase;">Số Dòng Lỗi</th>
+                        <th class="py-3 px-3 text-muted fw-semibold font-mono" style="font-size: 0.72rem; text-transform: uppercase;">Thời Lượng</th>
+                        <th class="py-3 px-3 text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Trạng Thái</th>
+                        <th class="py-3 px-4 text-end text-muted fw-semibold" style="font-size: 0.72rem; text-transform: uppercase;">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="testsTableBody">
+                    {% for t in dbt.tests %}
+                    <tr class="item-row row-test row-{{ t.status }}" data-name="{{ t.name }}">
+                        <td class="py-3 px-4 font-mono fw-semibold text-black" style="font-size: 0.82rem;">
+                            {{ t.name }}
+                            {% if t.message %}
+                            <div class="text-muted font-mono" style="font-size: 0.7rem; font-weight: 400;">
+                                {{ t.message }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="badge bg-light text-dark border font-mono" style="font-size: 0.7rem;">
+                                {{ t.test_type|upper }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 font-mono">
+                            {% if t.failures == 0 %}
+                            <span class="text-muted">0 lỗi</span>
+                            {% else %}
+                            <span class="text-danger fw-bold">{{ t.failures }} lỗi</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 font-mono text-muted" style="font-size: 0.8rem;">
+                            {{ "%.2fs" % t.execution_time }}
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="status-badge {% if t.status == 'pass' %}badge-SUCCESS{% else %}badge-FAILED{% endif %}">
+                                {{ t.status|upper }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-end">
+                            <button class="btn-minimal-outline btn-sm px-2 py-1 font-mono" onclick="triggerDbtAction('test', '{{ t.name }}', false, this)" style="font-size: 0.74rem;" title="Chạy riêng kiểm thử này">
+                                <i class="bi bi-play me-1"></i> Chạy Test
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TERMINAL LOG MODAL -->
+<div class="modal fade" id="dbtLogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="background: #09090b; border-radius: 10px; overflow: hidden; border: 1px solid #27272a;">
+            <div class="modal-header border-bottom border-dark py-3 px-4" style="background: #09090b;">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #27272a; display: inline-block;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #27272a; display: inline-block;"></span>
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: #27272a; display: inline-block;"></span>
+                    <span class="ms-2 text-white font-mono fw-semibold" id="dbtLogModalTitle" style="font-size: 0.85rem;">dbt_execution.log</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-dark border border-secondary text-light font-mono" onclick="copyDbtLog()" style="font-size: 0.75rem;">
+                        <i class="bi bi-clipboard me-1"></i> Sao chép
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-4" style="background: #000000; min-height: 400px;">
+                <pre id="dbtLogContent" class="font-mono text-light mb-0" style="font-size: 0.82rem; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: #e4e4e7;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-dbt-action {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+}
+.btn-dbt-action:hover {
+    border-color: #09090b;
+    background: #fafafa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.btn-dbt-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+</style>
+
+<script>
+let currentFilter = 'all';
+
+function switchFilter(type) {
+    currentFilter = type;
+    
+    // Update active button state
+    ['tabAll', 'tabModels', 'tabTests', 'tabSeeds', 'tabFailures'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    });
+
+    if (type === 'all') document.getElementById('tabAll').classList.add('active');
+    if (type === 'model') document.getElementById('tabModels').classList.add('active');
+    if (type === 'test') document.getElementById('tabTests').classList.add('active');
+    if (type === 'seed' && document.getElementById('tabSeeds')) document.getElementById('tabSeeds').classList.add('active');
+    if (type === 'fail') document.getElementById('tabFailures').classList.add('active');
+
+    const modelsSec = document.getElementById('modelsSection');
+    const testsSec = document.getElementById('testsSection');
+
+    if (type === 'all') {
+        modelsSec.style.display = 'block';
+        testsSec.style.display = 'block';
+        document.querySelectorAll('.item-row').forEach(r => r.style.display = '');
+    } else if (type === 'model') {
+        modelsSec.style.display = 'block';
+        testsSec.style.display = 'none';
+        document.querySelectorAll('.row-model').forEach(r => r.style.display = '');
+    } else if (type === 'test') {
+        modelsSec.style.display = 'none';
+        testsSec.style.display = 'block';
+        document.querySelectorAll('.row-test').forEach(r => r.style.display = '');
+    } else if (type === 'fail') {
+        modelsSec.style.display = 'block';
+        testsSec.style.display = 'block';
+        document.querySelectorAll('.item-row').forEach(r => {
+            const isFail = r.classList.contains('row-fail') || r.classList.contains('row-error');
+            r.style.display = isFail ? '' : 'none';
+        });
+    }
+    filterTable();
+}
+
+function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    document.querySelectorAll('.item-row').forEach(r => {
+        if (currentFilter === 'model' && !r.classList.contains('row-model')) return;
+        if (currentFilter === 'test' && !r.classList.contains('row-test')) return;
+        if (currentFilter === 'fail' && !(r.classList.contains('row-fail') || r.classList.contains('row-error'))) return;
+
+        const name = (r.getAttribute('data-name') || '').toLowerCase();
+        const text = r.innerText.toLowerCase();
+        if (!q || name.includes(q) || text.includes(q)) {
+            r.style.display = '';
+        } else {
+            r.style.display = 'none';
+        }
+    });
+}
+
+function triggerDbtAction(action, select = null, fullRefresh = false, btn = null) {
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Đang chạy dbt...';
+    }
+
+    const payload = { action: action };
+    if (select) payload.select = select;
+    if (fullRefresh) payload.full_refresh = true;
+
+    fetch('/api/dbt/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+
+        // Show terminal log
+        document.getElementById('dbtLogModalTitle').innerText = 'dbt_' + action + (select ? '_' + select : '') + '.log';
+        document.getElementById('dbtLogContent').innerText = data.logs || 'Không có output log.';
+        new bootstrap.Modal(document.getElementById('dbtLogModal')).show();
+
+        if (data.status === 'SUCCESS') {
+            setTimeout(() => { location.reload(); }, 2500);
+        } else {
+            alert('Tác vụ dbt thất bại: ' + (data.message || 'Xem chi tiết log trong Terminal.'));
+        }
+    })
+    .catch(err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        alert('Lỗi kích hoạt tác vụ dbt: ' + err);
+    });
+}
+
+function copyDbtLog() {
+    const content = document.getElementById('dbtLogContent').innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        alert('Đã sao chép log dbt vào bộ nhớ tạm.');
+    });
+}
+</script>
+{% endblock %}

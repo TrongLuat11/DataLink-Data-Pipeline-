@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: apitiki_raw
+    description: "Dữ liệu bán lẻ thô thu thập từ Tiki API qua dlt pipeline đổ vào schema raw_data"
+    database: datalink_warehouse
+    schema: raw_data
+    tables:
+      - name: products
+        description: "Bảng sản phẩm thô từ Tiki: giá, giảm giá, tồn kho, lượt bán, thương hiệu"
+        columns:
+          - name: id
+            description: "Khóa chính sản phẩm"
+            tests: [not_null, unique]
+
+      - name: sellers
+        description: "Bảng nhà bán hàng thô: seller_id, seller_name, is_official_store"
+        columns:
+          - name: seller_id
+            description: "Khóa chính nhà bán hàng"
+            tests: [not_null]
+
+      - name: product_categories
+        description: "Bảng ánh xạ sản phẩm với các danh mục ngành hàng"
+        columns:
+          - name: product_id
+            description: "Mã sản phẩm"
+            tests: [not_null]
+          - name: category_id
+            description: "Mã danh mục"
+            tests: [not_null]
+
+      - name: product_reviews
+        description: "Bảng đánh giá, nhận xét thực tế từ người mua hàng"
+        columns:
+          - name: review_id
+            description: "Mã đánh giá"
+            tests: [not_null]
+          - name: product_id
+            description: "Mã sản phẩm được đánh giá"
+            tests: [not_null]
+
+      - name: flash_sales
+        description: "Bảng sự kiện Flash Sale & Deal Sốc từ Tiki"
+        columns:
+          - name: deal_id
+            description: "Mã deal flashsale"
+            tests: [not_null]
+          - name: product_id
+            description: "Mã sản phẩm tham gia deal"
+            tests: [not_null]

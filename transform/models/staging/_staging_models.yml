@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: stg_products
+    description: "Bảng staging dữ liệu sản phẩm Tiki đã chuẩn hóa"
+    columns:
+      - name: product_id
+        description: "Khóa chính sản phẩm"
+        tests:
+          - unique
+          - not_null
+      - name: product_name
+        description: "Tên sản phẩm"
+        tests:
+          - not_null
+      - name: price
+        description: "Giá bán hiện tại"
+        tests:
+          - not_null
+
+  - name: stg_sellers
+    description: "Bảng staging nhà bán hàng Tiki"
+    columns:
+      - name: seller_id
+        description: "Khóa chính nhà bán hàng"
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_product_categories
+    description: "Bảng liên kết sản phẩm và danh mục"
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+      - name: category_id
+        tests:
+          - not_null
+
+  - name: stg_product_reviews
+    description: "Bảng nhận xét đánh giá sản phẩm"
+    columns:
+      - name: review_id
+        tests:
+          - unique
+          - not_null
+      - name: rating
+        description: "Số sao đánh giá (chỉ chấp nhận từ 1 đến 5)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5]
+      - name: product_id
+        description: "Khóa ngoại tham chiếu đến bảng sản phẩm"
+        tests:
+          - not_null
+
+  - name: stg_flash_sales
+    description: "Bảng staging sự kiện Flash Sale & Deal Sốc"
+    columns:
+      - name: deal_id
+        tests:
+          - unique
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+      - name: special_price
+        tests:
+          - not_null
